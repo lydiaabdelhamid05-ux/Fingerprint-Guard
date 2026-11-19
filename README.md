@@ -1,50 +1,69 @@
 # Fingerprint Guard
 
-**Secure local file fingerprint verification in Rust**
+**File Integrity Verification Using Rust, SHA-256 and SQLite**
 
-A small Rust library and demonstration CLI that checks file fingerprints against a local SQLite store. It explores how endpoint-side fingerprint checks can reduce redundant processing while keeping file contents local.
+Fingerprint Guard is a lightweight Rust application designed to verify file integrity using cryptographic fingerprints.
 
-**Technologies:** Rust · SHA-256 · SQLite (`rusqlite`) · Rayon · constant-time comparison (`subtle`)
+The application calculates SHA-256 hashes, stores them in a local SQLite database, and detects changes by comparing current file fingerprints against previously recorded values.
 
-## Background
+This project demonstrates fundamental concepts of file integrity monitoring, cryptographic hashing, and local database management.
 
-In distributed endpoint-security architectures, devices may need to check local files against known fingerprints without uploading the original documents. A broader design can involve a central signature repository and synchronization to local stores. **This repository implements the local verification component only**; it does not include the central platform or synchronization service.
+## Technologies
 
-## My contribution
+- **Rust** — Application development
+- **SHA-256** — Cryptographic file fingerprinting
+- **SQLite** — Local fingerprint storage
+- **rusqlite** — SQLite integration with Rust
+- **Cargo** — Build system and unit testing
 
-- Implemented a reusable Rust library for fingerprint lookup in SQLite.
-- Added access validation against `FINGERPRINT_GUARD_SECRET`, using a constant-time byte comparison.
-- Implemented streaming SHA-256 hashing using 8 KiB chunks to avoid loading entire files into memory.
-- Added Rayon-based parallel processing and extension filtering for `.pdf`, `.docx`, `.txt`, `.dcm`, `.csv`, `.json`, and `.xml`.
-- Exposed distinct results for known/unknown fingerprints, unauthorized access, database failures, and file I/O failures.
-- Added a demonstration CLI and unit tests.
+## Features
+
+### SHA-256 Fingerprint Generation
+
+Calculate a SHA-256 fingerprint from a local file.
+
+### SQLite Fingerprint Database
+
+Store file paths and their corresponding SHA-256 fingerprints in a local SQLite database.
+
+### File Integrity Verification
+
+Compare the current fingerprint of a file with its previously stored fingerprint.
+
+The application distinguishes three verification results:
+
+- **MATCH** — The file matches its stored fingerprint.
+- **MODIFIED** — The file content differs from the stored fingerprint.
+- **NOT ENROLLED** — No reference fingerprint exists for the file.
+
+### Automated Tests
+
+Unit tests validate SHA-256 hashing and file modification detection.
 
 ## Architecture
 
-Fingerprint Guard implements the local verification component of a broader distributed fingerprint-based security architecture.
+Fingerprint Guard implements a local file integrity verification workflow.
 
-The project includes technical documentation covering the system architecture, Rust library components, and file verification workflow.
+The project also includes technical documentation and diagrams describing its architecture.
 
-For more details, see the [Architecture Documentation](docs/architecture.md).
+[View Architecture Documentation](docs/architecture.md)
 
 ### Technical Diagrams
 
-The following diagrams provide an overview of the system design and the fingerprint verification process.
+- [System Architecture](docs/diagrams/system-architecture.png)
+- [Fingerprint Guard Architecture](docs/diagrams/fingerprint-guard-architecture.png)
+- [Verification Workflow](docs/diagrams/verification-workflow.png)
 
-- [System Architecture](docs/diagrams/system-architecture.png) — High-level overview of the distributed fingerprint verification concept.
-- [Fingerprint Guard Architecture](docs/diagrams/fingerprint-guard-architecture.png) — Internal structure of the Rust verification library.
-- [Verification Workflow](docs/diagrams/verification-workflow.png) — Step-by-step overview of the local file verification process.
-
-## Repository layout
+## Project Structure
 
 ```text
-.
+Fingerprint-Guard/
 ├── src/
-│   ├── lib.rs        # Public library interface
-│   ├── db.rs         # SQLite fingerprint store
-│   ├── security.rs   # Secret validation
-│   ├── verify.rs     # Hashing, filtering, parallel verification, tests
-│   └── main.rs       # Demonstration CLI
+│   ├── main.rs
+│   ├── lib.rs
+│   ├── db.rs
+│   ├── security.rs
+│   └── verify.rs
 ├── docs/
 │   ├── architecture.md
 │   └── diagrams/
@@ -57,57 +76,136 @@ The following diagrams provide an overview of the system design and the fingerpr
 └── .gitignore
 ```
 
-## Getting started
+## Getting Started
 
-Requires a working Rust toolchain (`cargo`) and SQLite development support as needed by `rusqlite`.
+### Requirements
+
+- Rust and Cargo
+- Linux, macOS or Windows with a compatible Rust toolchain
+
+### Build
 
 ```bash
-git clone <git clone git@github.com:lydiaabdelhamid05-ux/Fingerprint-Guard.git>
-cd Fingerprint-Guard
 cargo build
+```
+
+### Run Tests
+
+```bash
 cargo test
 ```
 
-To run the demonstration CLI:
+## Usage
+
+### 1. Create a Test File
 
 ```bash
-export FINGERPRINT_GUARD_SECRET='replace-with-a-local-test-secret'
-export DB_PATH='fingerprints.db'
-cargo run
+echo "Original document" > document.txt
 ```
 
-The demo contains **illustrative file paths**. Missing sample files produce I/O errors; add your own local test files to exercise file hashing. The SQLite database is created on first use. It starts without known fingerprints, so lookups normally return `NOT_FOUND` until fingerprints are inserted.
+### 2. Register a Fingerprint
 
-### Library usage
-
-```rust
-use fingerprint_guard::{verify, VerifyResult};
-
-let result = verify("example-sha256-hex", "your-test-secret", "fingerprints.db");
-match result {
-    VerifyResult::Found => println!("Known fingerprint"),
-    VerifyResult::NotFound => println!("Unknown fingerprint"),
-    VerifyResult::Unauthorized => println!("Access denied"),
-    VerifyResult::DatabaseError(err) => eprintln!("Database error: {err}"),
-    VerifyResult::IoError(err) => eprintln!("File error: {err}"),
-}
+```bash
+cargo run -- enroll fingerprints.db document.txt
 ```
 
-`verify_files` accepts a slice of file paths and hashes supported file types in parallel.
+The application calculates the SHA-256 fingerprint and stores it in SQLite.
 
-## Security considerations and limitations
+### 3. Verify File Integrity
 
-- **Authorization:** a shared environment secret is compared in constant time. This is a prototype-level control, not a complete endpoint identity or credential-management system.
-- **Hashing:** SHA-256 is used for local fingerprint comparison; this is **not** malware classification or automatic threat neutralization.
-- **Database encryption:** `DB_ENCRYPTION_KEY` is passed as an SQLite `key` pragma when present. **Encryption is not guaranteed by the default build**; it requires SQLCipher-enabled SQLite, which this repository does not configure or verify. Do not store sensitive data assuming encryption is active.
-- **Database initialization:** the local SQLite database and `fingerprints` table are created automatically. There is no bundled central signature feed or ingestion pipeline.
-- **Scope:** PostgreSQL synchronization, delta distribution, Merkle proofs, per-device salting, and cross-platform credential storage are architectural ideas or future work, **not implemented features in this repository**.
-- **Tests:** unit tests are included; no performance or security certification is claimed.
+```bash
+cargo run -- check fingerprints.db document.txt
+```
 
-## Development status
+Expected output:
 
-Educational/portfolio prototype of the local verification component. It is not a production endpoint protection agent.
+```text
+MATCH: file unchanged
+```
 
-## Publication note
+### 4. Simulate a File Modification
 
-Prepared as a minimal technical portfolio example. **Do not publish code derived from an internship or employer project without the appropriate authorization.** No internal diagrams, poster, organization-specific configuration, credentials, or personal documentation are included.
+```bash
+echo "Unauthorized modification" >> document.txt
+```
+
+Run the verification again:
+
+```bash
+cargo run -- check fingerprints.db document.txt
+```
+
+Expected output:
+
+```text
+MODIFIED: file content differs
+```
+
+### 5. Verify an Unknown File
+
+```bash
+echo "Unknown document" > unknown.txt
+
+cargo run -- check fingerprints.db unknown.txt
+```
+
+Expected output:
+
+```text
+NOT ENROLLED: no baseline for file
+```
+
+## Database Structure
+
+Fingerprints are stored in a local SQLite database.
+
+```sql
+CREATE TABLE fingerprints (
+    path TEXT PRIMARY KEY,
+    sha256 TEXT NOT NULL
+);
+```
+
+Each record associates a file path with its reference SHA-256 fingerprint.
+
+## Testing
+
+The application includes automated tests covering:
+
+- SHA-256 fingerprint calculation
+- File modification detection
+
+The current implementation has successfully passed both unit tests.
+
+## Security Considerations
+
+SHA-256 provides a cryptographic fingerprint of file contents.
+
+Fingerprint comparison can identify modifications, but it does not determine whether a file is malicious.
+
+The local SQLite database is not encrypted by default.
+
+An attacker who can modify both the file and its stored reference fingerprint may bypass this basic integrity check.
+
+This project is intended for educational and portfolio purposes rather than production endpoint protection.
+
+## Future Improvements
+
+Potential extensions include:
+
+- Centralized fingerprint management using PostgreSQL
+- PostgreSQL-to-SQLite synchronization
+- SHA3-256 support
+- Incremental fingerprint updates
+- Merkle tree verification
+- Parallel file processing
+- JSON verification reports
+- Encrypted local database storage
+
+These features are not part of the current implementation.
+
+## Project Status
+
+**Functional educational prototype.**
+
+The current version demonstrates SHA-256 fingerprint generation, SQLite storage, and local file integrity verification.

@@ -1,11 +1,10 @@
 [package]
-name = "fingerprint_guard"
-version = "0.1.0"		#version du projet
-edition = "2021"		#version du langage Rust
+name = "fingerprint-guard"
+version = "0.1.0"
+edition = "2021"
+description = "Standalone file integrity monitor with SHA-256 and SQLite"
+license = "MIT"
 
 [dependencies]
-rusqlite = "0.31"
-rayon   = "1.10"   # Parallélisme multi-thread
-subtle  = "2.6"    # Comparaison en temps constant (anti timing-attack)
-sha2    = "0.10"   # Hachage SHA-256 des fichiers
-hex     = "0.4"    # Encodage hex du hash
+sha2 = "0.10"
+rusqlite = { version = "0.32", features = ["bundled"] }

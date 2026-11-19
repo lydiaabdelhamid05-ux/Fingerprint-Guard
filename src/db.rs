@@ -1,42 +1,20 @@
-use rusqlite::{Connection, OpenFlags, Result};
-use std::env;
+use rusqlite::{params, Connection, Result};
+use std::path::Path;
 
-pub struct Database {
-    conn: Connection,
-}
-
-impl Database {
-    // Ouvre la base SQLite au chemin fourni.
-    // SÉCURITÉ : la clé de chiffrement (SQLCipher) est lue depuis la variable
-    // d'environnement `DB_ENCRYPTION_KEY` si elle est définie. Requiert SQLCipher.
-    pub fn new(db_path: &str) -> Result<Self> {
-        let conn = Connection::open_with_flags(
-            db_path, 
-            OpenFlags::SQLITE_OPEN_READ_WRITE | OpenFlags::SQLITE_OPEN_CREATE,
-        )?;
-
-        // SÉCURITÉ : clé lue depuis l'environnement, jamais codée en dur.
-        // Si DB_ENCRYPTION_KEY n'est pas définie, pas de chiffrement (mode dev/test).
-        if let Ok(key) = env::var("DB_ENCRYPTION_KEY") {
-            conn.pragma_update(None, "key", key.as_str())?;
-        }
-
-        // Création de la table si elle n'existe pas encore (première exécution)
-        conn.execute_batch(
-            "CREATE TABLE IF NOT EXISTS fingerprints (
-                id   INTEGER PRIMARY KEY AUTOINCREMENT,
-                hash TEXT    NOT NULL UNIQUE
-            );"
-        )?;
-
+pub struct Store { conn: Connection }
+impl Store {
+    pub fn open(path: &Path) -> Result<Self> {
+        let conn = Connection::open(path)?;
+        conn.execute_batch("CREATE TABLE IF NOT EXISTS fingerprints (path TEXT PRIMARY KEY, sha256 TEXT NOT NULL);")?;
         Ok(Self { conn })
     }
-
-    pub fn find_hash(&self, hash: &str) -> Result<bool> {
-        let mut stmt = self.conn.prepare(
-            "SELECT EXISTS(SELECT 1 FROM fingerprints WHERE hash = ?1)",
-        )?;
-        let exists: bool = stmt.query_row([hash], |row| row.get(0))?;
-        Ok(exists)
+    pub fn save(&self, path: &str, sha256: &str) -> Result<()> {
+        self.conn.execute("INSERT INTO fingerprints(path, sha256) VALUES (?1, ?2) ON CONFLICT(path) DO UPDATE SET sha256=excluded.sha256", params![path, sha256])?;
+        Ok(())
+    }
+    pub fn expected(&self, path: &str) -> Result<Option<String>> {
+        let mut stmt = self.conn.prepare("SELECT sha256 FROM fingerprints WHERE path = ?1")?;
+        let mut rows = stmt.query([path])?;
+        Ok(rows.next()?.map(|row| row.get(0)).transpose()?)
     }
 }

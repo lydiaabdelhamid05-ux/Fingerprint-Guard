@@ -1,57 +1,22 @@
-use fingerprint_guard::{verify, verify_files, VerifyResult};
-use std::path::PathBuf;
-use std::time::Instant;
+use fingerprint_guard::{db::Store, enroll_file, check_file, CheckResult};
+use std::{env, error::Error, path::Path};
 
-fn main() {
-    // SÉCURITÉ : le secret est lu depuis l'environnement, jamais codé en dur.
-    // Lancement : FINGERPRINT_GUARD_SECRET=mon_secret cargo run
-    let secret = match std::env::var("FINGERPRINT_GUARD_SECRET") {
-        Ok(s) => s,
-        Err(_) => {
-            eprintln!("[ERREUR] FINGERPRINT_GUARD_SECRET n'est pas définie.");
-            eprintln!("  → Lancement : FINGERPRINT_GUARD_SECRET=<secret> cargo run");
-            std::process::exit(1);
-        }
-    };
-
-    // Chemin de la base (DB_PATH optionnel, défaut : fingerprints.db)
-    let db_path = std::env::var("DB_PATH")
-        .unwrap_or_else(|_| "fingerprints.db".to_string());
-
-    // ── Exemple 1 : vérification d'une empreinte seule ───────────────────────
-    let hash = "abc123";
-    match verify(hash, &secret, &db_path) {
-        VerifyResult::Found         => println!("[OK] Empreinte '{}' trouvée.", hash),
-        VerifyResult::NotFound      => println!("[--] Empreinte '{}' inconnue.", hash),
-        VerifyResult::Unauthorized  => eprintln!("[!!] Accès refusé : secret invalide."),
-        VerifyResult::DatabaseError(e) => eprintln!("[!!] Erreur base de données : {}", e),
-        VerifyResult::IoError(e)    => eprintln!("[!!] Erreur I/O : {}", e),
+fn main() -> Result<(), Box<dyn Error>> {
+    let args: Vec<String> = env::args().collect();
+    if args.len() != 4 || !matches!(args[1].as_str(), "enroll" | "check") {
+        eprintln!("Usage: {} <enroll|check> <database.db> <file>", args[0]);
+        std::process::exit(2);
     }
-
-    // ── Exemple 2 : traitement parallèle avec benchmark ──────────────────────
-    let fichiers: Vec<PathBuf> = vec![
-        PathBuf::from("sample_report.pdf"),
-        PathBuf::from("sample_scan.dcm"),
-        PathBuf::from("sample_image.png"),    // filtré : extension non supportée
-        PathBuf::from("sample_config.txt"),
-        PathBuf::from("sample_products.csv"), // filtré : extension non supportée
-        PathBuf::from("sample_document.docx"),
-        PathBuf::from("sample_data.json"),
-        PathBuf::from("sample_records.xml")
-
-    ];
-
-    println!("\nTraitement parallèle de {} fichier(s)...", fichiers.len());
-    let debut = Instant::now();
-    let resultats = verify_files(&fichiers, &secret, &db_path);
-    let duree = debut.elapsed();
-
-    println!(
-        "{} fichier(s) traité(s) (après filtrage) en {:?}",
-        resultats.len(),
-        duree
-    );
-    for (chemin, res) in &resultats {
-        println!("  {:?} → {:?}", chemin, res);
+    let store = Store::open(Path::new(&args[2]))?;
+    let file = Path::new(&args[3]);
+    match args[1].as_str() {
+        "enroll" => println!("Enrolled SHA-256: {}", enroll_file(&store, file)?),
+        "check" => match check_file(&store, file)? {
+            CheckResult::Match => println!("MATCH: file unchanged"),
+            CheckResult::Modified => { println!("MODIFIED: file content differs"); std::process::exit(1); },
+            CheckResult::NotEnrolled => { println!("NOT ENROLLED: no baseline for file"); std::process::exit(3); },
+        },
+        _ => unreachable!(),
     }
+    Ok(())
 }

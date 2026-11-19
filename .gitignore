@@ -7,3 +7,6 @@ target/
 .DS_Store
 .idea/
 .vscode/
+
+# Local demonstrations
+demo/
