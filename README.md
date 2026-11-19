@@ -21,30 +21,11 @@ In distributed endpoint-security architectures, devices may need to check local 
 
 ## Architecture
 
-See the [architecture diagram](docs/architecture.md) for the boundary between the **implemented local library** and the **conceptual distributed system**.
+Fingerprint Guard implements the local verification component of a broader distributed fingerprint-based security architecture.
 
-### Technical Diagrams
+The project includes technical documentation covering the system architecture, Rust library components, and file verification workflow.
 
-The following diagrams illustrate the overall system concept, the implemented Rust library, and the local fingerprint verification process.
-
-#### 1. System Architecture
-
-High-level overview of the distributed fingerprint verification concept.
-
-![System Architecture](docs/diagrams/system-architecture.png)
-
-#### 2. Fingerprint Guard Architecture
-
-Internal architecture of the implemented Rust fingerprint verification library.
-
-![Fingerprint Guard Architecture](docs/diagrams/fingerprint-guard-architecture.png)
-
-#### 3. Verification Workflow
-
-Overview of the local file fingerprint verification process.
-
-![Verification Workflow](docs/diagrams/verification-workflow.png)
-
+For more details, see the [Architecture Documentation](docs/architecture.md).
 
 ## Repository layout
 
