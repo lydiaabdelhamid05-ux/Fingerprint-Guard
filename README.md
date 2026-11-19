@@ -27,6 +27,14 @@ The project includes technical documentation covering the system architecture, R
 
 For more details, see the [Architecture Documentation](docs/architecture.md).
 
+### Technical Diagrams
+
+The following diagrams provide an overview of the system design and the fingerprint verification process.
+
+- [System Architecture](docs/diagrams/system-architecture.png) — High-level overview of the distributed fingerprint verification concept.
+- [Fingerprint Guard Architecture](docs/diagrams/fingerprint-guard-architecture.png) — Internal structure of the Rust verification library.
+- [Verification Workflow](docs/diagrams/verification-workflow.png) — Step-by-step overview of the local file verification process.
+
 ## Repository layout
 
 ```text
