@@ -23,16 +23,6 @@ In distributed endpoint-security architectures, devices may need to check local 
 
 See the [architecture diagram](docs/architecture.md) for the boundary between the **implemented local library** and the **conceptual distributed system**.
 
-```mermaid
-flowchart LR
-    F[Local file] --> H[SHA-256 streaming hash]
-    H --> V[Verification API]
-    E[Environment secret] --> A[Constant-time authorization]
-    A --> V
-    V <--> D[(Local SQLite fingerprints)]
-    V --> R[Verification result]
-```
-
 ### Technical Diagrams
 
 The following diagrams illustrate the overall system concept, the implemented Rust library, and the local fingerprint verification process.
